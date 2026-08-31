@@ -1,0 +1,8 @@
+# 静态、环境无关的用户数据（占位值；真实用户信息用环境变量 TEST_*__* 覆盖或 CI 变量）
+valid_user:
+  username: placeholder-user
+  role: standard
+
+admin_user:
+  username: placeholder-admin
+  role: admin

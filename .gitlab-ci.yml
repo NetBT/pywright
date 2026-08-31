@@ -1,0 +1,105 @@
+# 流水线：lint → smoke → regression → report
+# - 默认环境（TEST_ENV=default，读根目录 .env）冒烟每次 MR/合入必跑
+# - 多环境（自定义环境名）扩展示例见下方注释：用户自建 .env.{env} 文件即可
+# - 回归依赖冒烟通过（needs），失败重试仅容忍已标记 flaky 用例
+stages: [lint, smoke, regression, report]
+
+default:
+  image: python:3.12-slim
+  interruptible: true
+
+variables:
+  TEST_ENV: "default" # 环境命名权归用户：default 读 .env，自定义环境读 .env.{TEST_ENV}
+  UV_CACHE_DIR: "$CI_PROJECT_DIR/.uv-cache"
+  PLAYWRIGHT_BROWSERS_PATH: "$CI_PROJECT_DIR/.ms-playwright" # 浏览器进缓存，加速流水线
+
+cache:
+  key: "deps-$CI_COMMIT_REF_SLUG"
+  paths: [.venv, .uv-cache, .ms-playwright]
+
+workflow:
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+    - if: $CI_COMMIT_BRANCH == "main"
+    - if: $CI_PIPELINE_SOURCE == "schedule"
+
+.setup: &setup
+  before_script:
+    - pip install uv --quiet
+    - uv sync --all-groups
+    - uv run playwright install chromium --with-deps
+
+lint:
+  <<: *setup
+  stage: lint
+  script:
+    - uv run ruff check .
+    - uv run ruff format --check .
+
+.smoke: &smoke
+  <<: *setup
+  stage: smoke
+  script:
+    - uv run pytest -m smoke --env "$TEST_ENV" --video=retain-on-failure
+        --alluredir "allure-results/$CI_JOB_NAME" --junitxml=junit.xml
+  retry: # 仅基础设施级失败重试，绝不掩盖断言失败
+    max: 1
+    when: [runner_system_failure, stuck_or_timeout_failure]
+  artifacts:
+    when: always
+    paths: [allure-results/, artifacts/playwright/, artifacts/logs/]
+    reports:
+      junit: junit.xml
+    expire_in: 7 days
+
+smoke:
+  <<: *smoke
+
+# 多环境扩展示例：环境名由用户自定义，对应仓库根目录 .env.{TEST_ENV} 文件（复制 .env 创建）。
+# 按需取消注释并修改 job 名与 TEST_ENV，例如：
+# smoke:uat:
+#   <<: *smoke
+#   variables: { TEST_ENV: "uat" }
+#   rules:
+#     - if: $CI_PIPELINE_SOURCE == "schedule" # 夜间定时
+#     - when: manual
+
+regression:
+  <<: *setup
+  stage: regression
+  needs: ["smoke"] # 冒烟不过不进回归
+  timeout: 45m
+  script:
+    - uv run pytest -m regression --env "$TEST_ENV" --reruns 2 --rerun-delay 3
+        --alluredir "allure-results/$CI_JOB_NAME"
+  retry:
+    max: 1
+    when: [runner_system_failure, stuck_or_timeout_failure]
+  artifacts:
+    when: always
+    paths: [allure-results/, artifacts/playwright/, artifacts/logs/]
+    expire_in: 7 days
+
+report:
+  stage: report
+  needs: ["smoke", "regression"]
+  variables:
+    ALLURE_VERSION: "2.33.0"
+  script:
+    - mkdir -p results public
+    - find allure-results -name '*-result.json' -exec cp {} results/ \;
+    - curl -fsSL "https://github.com/allure-framework/allure2/releases/download/${ALLURE_VERSION}/allure-${ALLURE_VERSION}.tgz" | tar -xz -C /opt
+    - /opt/allure-${ALLURE_VERSION}/bin/allure generate results -o public --clean
+  artifacts:
+    paths: [public]
+    expire_in: 14 days
+  rules:
+    - if: $CI_COMMIT_BRANCH == "main"
+
+# 项目启用 GitLab Pages 后取消注释，静态报告将发布到 pages 域名
+# pages:
+#   stage: report
+#   needs: [report]
+#   publish: public
+#   rules:
+#     - if: $CI_COMMIT_BRANCH == "main"
