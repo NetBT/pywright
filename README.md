@@ -47,8 +47,12 @@ uv sync --all-groups
 
 # 2. 安装浏览器
 uv run playwright install chromium
+```
 
-# 3. 运行冒烟（裸跑 pytest 默认即冒烟；默认环境读根目录 .env）
+### 运行测试
+
+```shell
+# 运行冒烟（裸跑 pytest 默认即冒烟；默认环境读根目录 .env）
 uv run pytest
 uv run pytest -m smoke
 
