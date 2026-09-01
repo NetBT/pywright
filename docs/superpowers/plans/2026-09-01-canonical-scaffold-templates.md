@@ -13,12 +13,12 @@
 ## File Structure
 
 - Modify: `scripts/scaffold.py` — resolve the one canonical template directory; remove root-repository template discovery and template-specific exclusions that become unnecessary.
-- Modify: `tests/test_scaffold.py` — verify the generated project has representative template files, the project README, the generated scaffold script, and the package-relative template root.
+- Modify: `tests/test_scaffold.py` — verify the generated project has representative template files, the project README, no generated `docs/` directory, the generated scaffold script, and the package-relative template root.
 - Modify: `pyproject.toml` — retain CLI wheel packaging and replace root-to-template force includes with recursive inclusion of the in-package template tree.
 - Modify: `README.md` — document `pywright` as the distributed scaffold CLI only.
 - Create: `scripts/_templates/README.md` — describe the generated test project and its operations.
 - Move: `.env`, `.gitlab-ci.yml`, `.python-version`, `pyproject.toml`, `uv.lock`, `api/`, `auth/`, `config/`, `pages/`, `specs/`, `test_data/`, and `utils/` to `scripts/_templates/`.
-- Move: the generated-project documentation files `docs/ai-testing-workflow.md`, `docs/design-decisions.md`, and `docs/test-plan-template.md` to `scripts/_templates/docs/`; keep the root `docs/superpowers/` planning records and the root `docs/` directory.
+- Keep: `docs/` and all of its contents at the repository root; generated projects do not receive a `docs/` directory.
 - Move: generated-project test files under `tests/` to `scripts/_templates/tests/`; keep `tests/test_scaffold.py` at the root as the CLI-package test.
 - Copy: `.gitignore` to `scripts/_templates/.gitignore` and keep the root copy for CLI repository ignores.
 - Delete: root copies of all files and directories moved above.
@@ -55,7 +55,7 @@ def test_create_project_copies_canonical_template_and_scaffold(tmp_path: Path) -
     assert (tmp_path / "README.md").is_file()
     assert (tmp_path / "pyproject.toml").is_file()
     assert (tmp_path / "api" / "client.py").is_file()
-    assert (tmp_path / "docs" / "ai-testing-workflow.md").is_file()
+    assert not (tmp_path / "docs").exists()
     assert (tmp_path / "specs" / ".gitkeep").is_file()
     assert (tmp_path / "scripts" / "scaffold.py").is_file()
     assert not (tmp_path / "scripts" / "_templates").exists()
@@ -86,7 +86,6 @@ Expected: FAIL because `template_root()` currently resolves to the repository ro
 - Create: `scripts/_templates/api/`
 - Create: `scripts/_templates/auth/`
 - Create: `scripts/_templates/config/`
-- Create: `scripts/_templates/docs/`
 - Create: `scripts/_templates/pages/`
 - Create: `scripts/_templates/specs/`
 - Create: `scripts/_templates/test_data/`
@@ -109,7 +108,7 @@ Move-Item docs/ai-testing-workflow.md, docs/design-decisions.md, docs/test-plan-
 Get-ChildItem tests -Force | Where-Object Name -ne 'test_scaffold.py' | Move-Item -Destination "$destination/tests"
 ```
 
-Keep the root `.gitignore` after copying it because the distribution repository needs its own ignores, including `.worktrees/`. Retain root `docs/superpowers/` and root `tests/test_scaffold.py`, which are distribution-project development artifacts.
+Keep the root `.gitignore` after copying it because the distribution repository needs its own ignores, including `.worktrees/`. Retain the whole root `docs/` directory and root `tests/test_scaffold.py`, which are distribution-project documentation and development artifacts.
 
 - [ ] **Step 2: Move the generated project configuration**
 
@@ -283,7 +282,7 @@ $wheel = Get-ChildItem dist/pywright-0.1.2-py3-none-any.whl | Select-Object -Fir
 uvx --from $wheel.FullName pywright --dry-run "$env:TEMP/pywright-template-preview"
 ```
 
-Expected: build succeeds and dry-run lists `README.md`, `api/client.py`, `docs/ai-testing-workflow.md`, and `scripts/scaffold.py`.
+Expected: build succeeds and dry-run lists `README.md`, `api/client.py`, and `scripts/scaffold.py`; it does not list files below `docs/`.
 
 - [ ] **Step 5: Commit CLI and packaging changes**
 

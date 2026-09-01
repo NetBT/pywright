@@ -1,0 +1,52 @@
+[project]
+name = "pywright"
+version = "0.1.2"
+description = "Pytest + Playwright 分层测试框架（POM / API Facade / 多环境 / Allure / GitLab CI）"
+readme = "README.md"
+requires-python = ">=3.14"
+dependencies = [
+    "pytest>=8.3",
+    "playwright>=1.49",
+    "pytest-playwright>=0.6",
+    "pytest-rerunfailures>=14.0",
+    "allure-pytest>=2.13.5",
+    "pydantic>=2.9",
+    "pydantic-settings>=2.6",
+    "httpx>=0.28",
+    "PyYAML>=6.0.2",
+]
+
+[dependency-groups]
+dev = ["ruff>=0.8"]
+
+[tool.pytest.ini_options]
+minversion = "8.0"
+testpaths = ["tests"]
+pythonpath = ["."]
+addopts = [
+    "--strict-markers",
+    "--strict-config",
+    "--browser=chromium",
+    "--screenshot=only-on-failure",
+    "--tracing=retain-on-failure",
+    "--output=artifacts/playwright",
+    "--alluredir=artifacts/allure-results",
+]
+markers = [
+    "smoke: 冒烟——关键路径，每次合入必跑",
+    "regression: 回归——完整功能回归",
+    "integration: 集成——UI+API 跨层场景",
+    "ui: UI 层测试",
+    "api: API 层测试",
+    "wip: 进行中，默认排除（--wip 时只跑 wip）",
+    "flaky(reruns: int): 已知不稳定，由 pytest-rerunfailures 读取标记重试",
+]
+
+[tool.ruff]
+line-length = 120
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM", "S"]
+# 测试框架允许 assert（S101）与占位凭据默认值（S105，真实凭据只走环境变量 TEST_*__* 或 CI 变量）
+ignore = ["S101", "S105"]

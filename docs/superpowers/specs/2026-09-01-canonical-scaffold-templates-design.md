@@ -13,7 +13,6 @@ Move these generated-project directories to `scripts/_templates/`:
 - `api/`
 - `auth/`
 - `config/`
-- `docs/`
 - `pages/`
 - `specs/`
 - `test_data/`
@@ -22,7 +21,9 @@ Move these generated-project directories to `scripts/_templates/`:
 
 Move generated-project root files there as well: `.env`, `.gitignore`, `.gitlab-ci.yml`, `.python-version`, `pyproject.toml`, and `uv.lock`.
 
-Create `scripts/_templates/README.md` for the generated test project's framework overview, configuration, and testing workflow. The root `README.md` remains the CLI distribution guide.
+Keep `docs/` at the repository root. It documents the distributed scaffold rather than generated projects, so it is not copied to newly created projects.
+
+Create `scripts/_templates/README.md` for the generated test project's framework overview, configuration, testing workflow, and directory layout. The root `README.md` remains the CLI distribution guide.
 
 ## Scaffold Behavior
 
@@ -34,7 +35,7 @@ The wheel continues to contain only the `scripts` package. Since templates now l
 
 ## Validation
 
-Extend scaffold tests to assert a generated project contains the template README, representative source and documentation files, and `scripts/scaffold.py`. Run the focused tests with an explicit marker expression because the generated project's root test configuration defaults bare pytest execution to smoke tests. Build a wheel and invoke its installed CLI in a temporary tool environment or isolated directory to verify package-data inclusion and generated output.
+Extend scaffold tests to assert a generated project contains the template README, representative source files, no `docs/` directory, and `scripts/scaffold.py`. Build a wheel and invoke its installed CLI in a temporary tool environment or isolated directory to verify package-data inclusion and generated output.
 
 ## Out of Scope
 

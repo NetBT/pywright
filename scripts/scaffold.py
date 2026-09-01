@@ -9,7 +9,7 @@
     python scripts/scaffold.py ../my-project --dry-run
 
 设计说明：
-- 模板即本框架自身（self-replicating），运行时产物与敏感文件绝不复制
+- 模板位于 scripts/_templates/，运行时产物与敏感文件绝不复制
 - 标准库实现，零额外依赖；生成后自动 uv sync + 浏览器安装（--install）
 """
 
@@ -22,60 +22,34 @@ import subprocess
 import sys
 from pathlib import Path
 
-# 运行时产物与模板无关目录（绝不复制的清单）
-EXCLUDE_DIRS = {
-    ".venv",
-    ".git",
-    "artifacts",
-    ".pytest_cache",
-    ".ruff_cache",
-    ".remember",
-    "__pycache__",
-    ".claude",
-    ".idea",
-    ".vscode",
-    "scripts",  # CLI 包不属于模板（scaffold.py 自身单独附加，self-replicating）
-    "_templates",  # 安装模式下的模板目录（仓库模式不存在，防御性排除）
-    "dist",
-    "build",
-}
 # 绝不复制/覆盖的文件（.env 作为模板一部分正常复制并渲染占位值）
 EXCLUDE_FILES: set[str] = set()
 
 NAME_PATTERN = re.compile(r"^[A-Za-z0-9](?:[A-Za-z0-9._-]*[A-Za-z0-9])?$")
 
-# scaffold 自身随模板传播（self-replicating）：安装模式下模板不含 scripts/，单独附加
+# scaffold.py 自身随模板传播；模板不包含 scripts/。
 SCAFFOLD_REL = Path("scripts") / "scaffold.py"
 
 
 def template_root() -> Path:
-    """模板根双模式定位。
-
-    - 仓库内运行（uv run pywright）：仓库根即模板（含 api/、tests/、.env 等）
-    - pip/uv tool 安装：模板数据在包内 scripts/_templates/
-    """
-    repo_root = Path(__file__).resolve().parent.parent
-    if (repo_root / "api").is_dir() and (repo_root / ".gitignore").is_file():
-        return repo_root
+    """返回包内唯一的测试项目模板目录。"""
     return Path(__file__).resolve().parent / "_templates"
 
 
 def _read_template(rel: Path) -> str:
-    """读取模板文件：scaffold 自身读包代码（安装/仓库模式一致），其余读模板根。"""
+    """读取模板文件；scaffold 自身读当前包代码，其余读模板根。"""
     if rel == SCAFFOLD_REL:
         return Path(__file__).read_text(encoding="utf-8")
     return (template_root() / rel).read_text(encoding="utf-8")
 
 
 def collect_template_files() -> list[Path]:
-    """收集模板根下所有需复制的文件（相对路径）+ 附加 scaffold 自身。"""
-    files = []
-    for path in sorted(template_root().rglob("*")):
-        rel = path.relative_to(template_root())
-        if any(part in EXCLUDE_DIRS for part in rel.parts):
-            continue
-        if path.is_file() and rel.name not in EXCLUDE_FILES:
-            files.append(rel)
+    """收集模板根下所有需复制的文件（相对路径）并附加 scaffold 自身。"""
+    files = [
+        path.relative_to(template_root())
+        for path in sorted(template_root().rglob("*"))
+        if path.is_file() and path.name not in EXCLUDE_FILES
+    ]
     files.append(SCAFFOLD_REL)
     return files
 
