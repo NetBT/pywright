@@ -1,6 +1,6 @@
 [project]
 name = "pywright"
-version = "0.1.1"
+version = "0.1.2"
 description = "Pytest + Playwright 分层测试框架（POM / API Facade / 多环境 / Allure / GitLab CI）"
 readme = "README.md"
 requires-python = ">=3.14"
