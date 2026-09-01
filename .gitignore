@@ -23,3 +23,6 @@ build/
 
 # Agents
 .claude/
+
+# Local Git worktrees
+.worktrees/
