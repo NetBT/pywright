@@ -12,8 +12,8 @@
 
 ## File Structure
 
-- Modify: `scripts/scaffold.py` — resolve the one canonical template directory; remove root-repository template discovery and template-specific exclusions that become unnecessary.
-- Modify: `tests/test_scaffold.py` — verify the generated project has representative template files, the project README, no generated `docs/` directory, the generated scaffold script, and the package-relative template root.
+- Modify: `scripts/scaffold.py` — resolve the one canonical template directory; remove root-repository template discovery, template-specific exclusions, and self-replicating script output.
+- Modify: `tests/test_scaffold.py` — verify the generated project has representative template files, the project README, no generated `docs/` or `scripts/` directory, and the package-relative template root.
 - Modify: `pyproject.toml` — retain CLI wheel packaging and replace root-to-template force includes with recursive inclusion of the in-package template tree.
 - Modify: `README.md` — document `pywright` as the distributed scaffold CLI only.
 - Create: `scripts/_templates/README.md` — describe the generated test project and its operations.
@@ -37,7 +37,7 @@ from pathlib import Path
 from scripts.scaffold import create_project, template_root
 
 
-def test_create_project_copies_canonical_template_and_scaffold(tmp_path: Path) -> None:
+def test_create_project_copies_canonical_template(tmp_path: Path) -> None:
     assert template_root().name == "_templates"
 
     create_project(
@@ -57,8 +57,7 @@ def test_create_project_copies_canonical_template_and_scaffold(tmp_path: Path) -
     assert (tmp_path / "api" / "client.py").is_file()
     assert not (tmp_path / "docs").exists()
     assert (tmp_path / "specs" / ".gitkeep").is_file()
-    assert (tmp_path / "scripts" / "scaffold.py").is_file()
-    assert not (tmp_path / "scripts" / "_templates").exists()
+    assert not (tmp_path / "scripts").exists()
 ```
 
 - [ ] **Step 2: Run the focused test to verify it fails**
@@ -103,8 +102,7 @@ New-Item -ItemType Directory -Force $destination | Out-Null
 Move-Item .env, .gitlab-ci.yml, .python-version, api, auth, config, pages, specs, test_data, utils $destination
 Move-Item uv.lock "$destination/uv.lock"
 Copy-Item .gitignore "$destination/.gitignore"
-New-Item -ItemType Directory -Force "$destination/docs", "$destination/tests" | Out-Null
-Move-Item docs/ai-testing-workflow.md, docs/design-decisions.md, docs/test-plan-template.md "$destination/docs"
+New-Item -ItemType Directory -Force "$destination/tests" | Out-Null
 Get-ChildItem tests -Force | Where-Object Name -ne 'test_scaffold.py' | Move-Item -Destination "$destination/tests"
 ```
 
@@ -168,7 +166,6 @@ Bare `pytest` runs smoke tests. To select a custom environment, copy `.env` to `
 - `config/`: typed settings loaded from environment files.
 - `test_data/`: fixture data and builders.
 - `tests/`: smoke, regression, and integration tests.
-- `docs/`: design and AI-assisted testing guidance.
 - `specs/`: human-reviewed test plans.
 
 ## Quality and reporting
@@ -180,7 +177,6 @@ allure generate artifacts/allure-results -o artifacts/allure-report --clean
 allure open artifacts/allure-report
 ```
 
-Use `python scripts/scaffold.py <target>` to create another project from the same installed template.
 ```
 
 - [ ] **Step 2: Verify the document is present with the moved template files**
@@ -207,10 +203,6 @@ Expected: three `True` values.
 Replace the `EXCLUDE_DIRS` declaration, the `SCAFFOLD_REL` comment, and `template_root()` with:
 
 ```python
-# scaffold.py itself is appended to the generated project; package templates contain no scripts/ tree.
-SCAFFOLD_REL = Path("scripts") / "scaffold.py"
-
-
 def template_root() -> Path:
     """Return the package-relative canonical test-project template directory."""
     return Path(__file__).resolve().parent / "_templates"
@@ -219,16 +211,14 @@ def template_root() -> Path:
 Then replace the body of `collect_template_files()` with:
 
 ```python
-    files = [
+    return [
         path.relative_to(template_root())
         for path in sorted(template_root().rglob("*"))
         if path.is_file() and path.name not in EXCLUDE_FILES
     ]
-    files.append(SCAFFOLD_REL)
-    return files
 ```
 
-Update the module docstring and `_read_template()` docstring so they no longer describe self-replicating root templates or dual-mode lookup. Retain the explicit special case that reads the currently installed `scaffold.py` for `SCAFFOLD_REL`.
+Update the module docstring and `_read_template()` docstring so they no longer describe self-replicating root templates, dual-mode lookup, or a generated scaffold script.
 
 - [ ] **Step 2: Recreate root `pyproject.toml` for the distributable CLI**
 
@@ -256,9 +246,6 @@ build-backend = "hatchling.build"
 [tool.hatch.build.targets.wheel]
 packages = ["scripts"]
 
-[tool.hatch.build.targets.wheel.force-include]
-"scripts/_templates" = "scripts/_templates"
-
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 pythonpath = ["."]
@@ -282,7 +269,7 @@ $wheel = Get-ChildItem dist/pywright-0.1.2-py3-none-any.whl | Select-Object -Fir
 uvx --from $wheel.FullName pywright --dry-run "$env:TEMP/pywright-template-preview"
 ```
 
-Expected: build succeeds and dry-run lists `README.md`, `api/client.py`, and `scripts/scaffold.py`; it does not list files below `docs/`.
+Expected: build succeeds and dry-run lists `README.md` and `api/client.py`; it does not list files below `docs/` or `scripts/`.
 
 - [ ] **Step 5: Commit CLI and packaging changes**
 

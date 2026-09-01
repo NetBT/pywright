@@ -41,4 +41,3 @@ allure generate artifacts/allure-results -o artifacts/allure-report --clean
 allure open artifacts/allure-report
 ```
 
-Use `python scripts/scaffold.py <target>` to create another project from the same installed template.

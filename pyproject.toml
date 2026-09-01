@@ -19,9 +19,6 @@ build-backend = "hatchling.build"
 [tool.hatch.build.targets.wheel]
 packages = ["scripts"]
 
-[tool.hatch.build.targets.wheel.force-include]
-"scripts/_templates" = "scripts/_templates"
-
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 pythonpath = ["."]

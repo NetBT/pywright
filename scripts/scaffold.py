@@ -24,11 +24,9 @@ from pathlib import Path
 
 # 绝不复制/覆盖的文件（.env 作为模板一部分正常复制并渲染占位值）
 EXCLUDE_FILES: set[str] = set()
+EXCLUDE_DIRS = {".pytest_cache", ".ruff_cache", "__pycache__"}
 
 NAME_PATTERN = re.compile(r"^[A-Za-z0-9](?:[A-Za-z0-9._-]*[A-Za-z0-9])?$")
-
-# scaffold.py 自身随模板传播；模板不包含 scripts/。
-SCAFFOLD_REL = Path("scripts") / "scaffold.py"
 
 
 def template_root() -> Path:
@@ -37,21 +35,17 @@ def template_root() -> Path:
 
 
 def _read_template(rel: Path) -> str:
-    """读取模板文件；scaffold 自身读当前包代码，其余读模板根。"""
-    if rel == SCAFFOLD_REL:
-        return Path(__file__).read_text(encoding="utf-8")
+    """读取模板目录中的文件。"""
     return (template_root() / rel).read_text(encoding="utf-8")
 
 
 def collect_template_files() -> list[Path]:
-    """收集模板根下所有需复制的文件（相对路径）并附加 scaffold 自身。"""
-    files = [
+    """收集模板根下所有需复制的文件（相对路径）。"""
+    return [
         path.relative_to(template_root())
         for path in sorted(template_root().rglob("*"))
-        if path.is_file() and path.name not in EXCLUDE_FILES
+        if path.is_file() and path.name not in EXCLUDE_FILES and not any(part in EXCLUDE_DIRS for part in path.parts)
     ]
-    files.append(SCAFFOLD_REL)
-    return files
 
 
 def render_file(rel: Path, text: str, ctx: dict) -> str:

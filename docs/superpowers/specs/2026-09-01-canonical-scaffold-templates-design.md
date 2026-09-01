@@ -27,15 +27,15 @@ Create `scripts/_templates/README.md` for the generated test project's framework
 
 ## Scaffold Behavior
 
-`scripts.scaffold.template_root()` always resolves to its adjacent `_templates` directory, whether invoked from the source checkout or an installed wheel. `collect_template_files()` copies all template files without repository-specific exclusion rules. `scaffold.py` remains copied explicitly to generated projects at `scripts/scaffold.py`, while `_templates` itself is never copied into an output project.
+`scripts.scaffold.template_root()` always resolves to its adjacent `_templates` directory, whether invoked from the source checkout or an installed wheel. `collect_template_files()` copies all template files without repository-specific exclusion rules. Generated projects do not contain a `scripts/` directory: the installed `pywright` CLI remains the only scaffold command.
 
 ## Packaging
 
-The wheel continues to contain only the `scripts` package. Since templates now live below that package, remove the root-to-template `force-include` mappings from the package configuration. Configure the wheel build to include the template data recursively so source and installed CLI behavior use identical files.
+The wheel contains only the `scripts` package. Since templates now live below that package, remove root-to-template `force-include` mappings and rely on Hatchling's normal recursive inclusion of package files so source and installed CLI behavior use identical files.
 
 ## Validation
 
-Extend scaffold tests to assert a generated project contains the template README, representative source files, no `docs/` directory, and `scripts/scaffold.py`. Build a wheel and invoke its installed CLI in a temporary tool environment or isolated directory to verify package-data inclusion and generated output.
+Extend scaffold tests to assert a generated project contains the template README and representative source files, but no `docs/` or `scripts/` directory. Build a wheel and invoke its installed CLI in a temporary tool environment or isolated directory to verify package-data inclusion and generated output.
 
 ## Out of Scope
 
