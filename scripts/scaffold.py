@@ -44,16 +44,18 @@ def collect_template_files() -> list[Path]:
     return [
         path.relative_to(template_root())
         for path in sorted(template_root().rglob("*"))
-        if path.is_file() and path.name not in EXCLUDE_FILES and not any(part in EXCLUDE_DIRS for part in path.parts)
+        if path.is_file()
+        and path.name not in EXCLUDE_FILES
+        and not any(part in EXCLUDE_DIRS for part in path.parts)
     ]
 
 
 def render_file(rel: Path, text: str, ctx: dict) -> str:
     """按文件类型替换模板占位：pyproject 项目名 / README 标题 / .env 键值。"""
     if rel.name == "pyproject.toml":
-        text = re.sub(r'^name = "pywright"', f'name = "{ctx["name"]}"', text, flags=re.M)
+        text = re.sub(r'^name = "pywright"', f'name = "{ctx["name"]}"', text, flags=re.MULTILINE)
     elif rel.name == "README.md":
-        text = re.sub(r"^# pywright$", f"# {ctx['name']}", text, flags=re.M)
+        text = re.sub(r"^# pywright$", f"# {ctx['name']}", text, flags=re.MULTILINE)
     elif rel.name == ".env":
         text = render_env_content(text, ctx)
     return text
@@ -61,10 +63,14 @@ def render_file(rel: Path, text: str, ctx: dict) -> str:
 
 def render_env_content(text: str, ctx: dict) -> str:
     """注入 URL/认证参数到 .env 配置。"""
-    body = re.sub(r"^TEST_APP__UI_BASE_URL=.*$", f"TEST_APP__UI_BASE_URL={ctx['ui_url']}", text, flags=re.M)
-    body = re.sub(r"^TEST_APP__API_BASE_URL=.*$", f"TEST_APP__API_BASE_URL={ctx['api_url']}", body, flags=re.M)
-    body = re.sub(r"^TEST_AUTH__MODE=.*$", f"TEST_AUTH__MODE={ctx['auth_mode']}", body, flags=re.M)
-    body = re.sub(r"^TEST_AUTH__TOKEN=.*$", f"TEST_AUTH__TOKEN={ctx['token']}", body, flags=re.M)
+    body = re.sub(
+        r"^TEST_APP__UI_BASE_URL=.*$", f"TEST_APP__UI_BASE_URL={ctx['ui_url']}", text, flags=re.MULTILINE
+    )
+    body = re.sub(
+        r"^TEST_APP__API_BASE_URL=.*$", f"TEST_APP__API_BASE_URL={ctx['api_url']}", body, flags=re.MULTILINE
+    )
+    body = re.sub(r"^TEST_AUTH__MODE=.*$", f"TEST_AUTH__MODE={ctx['auth_mode']}", body, flags=re.MULTILINE)
+    body = re.sub(r"^TEST_AUTH__TOKEN=.*$", f"TEST_AUTH__TOKEN={ctx['token']}", body, flags=re.MULTILINE)
     return body
 
 
@@ -89,7 +95,7 @@ def run(cmd: list[str], cwd: Path) -> None:
     命令列表完全由脚本内部构造（固定参数，无用户输入拼接），无注入面。
     """
     print(f"  $ {' '.join(cmd)}")
-    result = subprocess.run(cmd, cwd=cwd, check=False)  # noqa: S603
+    result = subprocess.run(cmd, cwd=cwd, check=False)
     if result.returncode != 0:
         sys.exit(f"命令失败（exit {result.returncode}）: {' '.join(cmd)}")
 
