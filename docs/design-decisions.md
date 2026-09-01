@@ -5,7 +5,7 @@
 ## Design Notes
 
 - **Components**：配置层 / 认证层 / UI 层（页面对象）/ API 层（客户端+端点）/ 数据层 / 测试编排层（fixtures+markers）/ 报告与 CI
-- **Patterns chosen**：POM、门面+惰性页面工厂、Facade+Adapter、Strategy、Builder+Director、Template Method（轻量）、"不可变共享实例"替代单例
+- **Patterns chosen**：POM、门面+惰性页面工厂、Facade+Adapter、Strategy、Builder+Director、Template Method（轻量）、"不可变共享实例"替代单例、Agentic Loop（planner/generator/healer）
 - **Principles applied**：SRP（每层单一职责）、OCP（新页面/端点/认证方式=新增文件不改旧代码）、DIP（测试依赖抽象，具体实现被 POM/Facade 屏蔽）、LoD（测试只见门面）
 - **Alternatives considered**：见下表各决策的 no-pattern 基线
 - **Trade-offs**：一层对象化开销换定位符收敛；Protocol 抽象换认证可扩展性；均以"第二个变化轴出现时才引入"为原则
@@ -65,6 +65,26 @@
 | Service Locator / IoC 库 | fixture 即 DI 容器 |
 | 装饰器栈重试 | 重试由声明式插件（pytest-rerunfailures）承担 |
 
+### 9. AI 协作测试（Playwright 官方 Agent 能力）— `specs/` + `tests/`
+
+- **no-pattern 基线**：AI 直接在测试文件内“边看边改”，缺少计划与边界，容易生成脆弱定位符、重复逻辑、跨层耦合
+- **决策**：采用 Playwright 官方 Agentic Loop 思路（planner / generator / healer），但加人工审阅闸门
+- **落地约定**：
+  - planner 产物放 `specs/`（人类可读、可审阅的测试计划）
+  - generator 产物放 `tests/`（可执行用例）
+  - healer 仅提交修复建议，合并前必须人工 review + 回归验证
+- **边界约束**：AI 生成代码必须回收进既有分层（POM / Facade / fixtures），禁止把定位符与业务细节散落在测试脚本
+- **取舍**：增加一次审阅成本，换取更快的用例扩展速度与更低的长期维护成本
+
+### 10. AI 浏览器交互通道选型（MCP vs CLI）
+
+- **no-pattern 基线**：统一走一种交互通道，导致要么上下文开销大（复杂快照），要么能力不足（复杂探索）
+- **决策**：双通道并存，按场景选择
+  - MCP：用于探索式、多步推理场景（基于 accessibility tree 的结构化交互）
+  - playwright-cli：用于 token 敏感、命令式、短链路操作
+- **安全约束**：`browser_run_code_unsafe` 属于 RCE 等价能力，仅对受信任客户端启用
+- **取舍**：增加工具选择复杂度，换取效率与可观测性的平衡
+
 ## 关键机制决策
 
 ### 默认执行策略（`tests/conftest.py`）
@@ -92,3 +112,9 @@ dictConfig 双通道：FileHandler(DEBUG) → `artifacts/logs/run_{ts}.log`；St
 ### 环境配置
 
 覆盖顺序：环境变量 `TEST_*__*` → env 文件（`--env default` 读 `.env`，自定义环境读 `.env.{自定义名}`）→ 代码默认值。占位值入库保证开箱即用；真实敏感值只走环境变量/CI masked variables。
+
+### AI 协作执行规范
+
+1. 先规划后生成：优先由 planner 输出可审阅计划，再由 generator 生成测试代码。
+2. 失败定位优先级：UI Mode / Trace Viewer > 盲目加等待或全局重试。
+3. 稳定性红线：继续遵循“用户可见行为断言 + resilient locators + 禁止全局盲目 rerun”。

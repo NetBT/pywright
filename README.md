@@ -67,6 +67,55 @@ uv run pytest -m smoke --env uat
 uv run pytest --wip
 ```
 
+## AI 协作测试（基于 Playwright 官方能力）
+
+现代测试不仅要“可执行”，还要“可协作、可诊断、可修复”。结合 Playwright 官方文档，建议把 AI 能力纳入日常流程：
+
+1. 规划与生成：使用 Playwright Test Agents（planner / generator / healer）
+
+```shell
+# 生成适配 VS Code 的 agent 定义（Playwright 升级后建议重新生成）
+npx playwright init-agents --loop=vscode
+```
+
+- planner 产出人类可审阅的测试计划（建议放在 `specs/`）。
+- generator 将计划转成可执行测试（落在 `tests/`）。
+- healer 负责失败回放与自动修复建议（保留人工审阅闸门）。
+
+2. 交互式探索：MCP（结构化无障碍快照）
+
+```shell
+# 本地临时运行 MCP server
+npx @playwright/mcp@latest
+```
+
+- 官方 MCP 基于 accessibility tree 而非像素截图，AI 可通过结构化元素引用执行操作。
+- 适合探索式场景、复杂流程探测、定位符回归核验。
+
+3. 低 token 自动化：playwright-cli（面向编码代理）
+
+```shell
+npm install -g @playwright/cli@latest
+playwright-cli install --skills
+```
+
+- 适合在大仓库上下文中做轻量浏览器自动化，减少模型上下文负担。
+- 可配合 `playwright-cli show` 观察 agent 会话与实时画面。
+
+4. 调试与证据：优先 Trace / UI Mode
+
+- 本地开发用 UI Mode：`npx playwright test --ui`。
+- CI 侧建议 trace 使用“失败重试时采集”（本项目当前策略与官方建议一致，避免全量 trace 的性能开销）。
+- 失败问题回溯优先看 Trace Viewer（动作、DOM 快照、网络、console、源码定位）。
+
+5. 质量边界（本项目约束）
+
+- AI 生成代码必须回收进既有分层：`pages/`（POM）与 `api/`（Facade），避免在测试中散写实现细节。
+- 保持用户可见行为断言与 resilient locators（role / text / test id 优先）。
+- 对 healer 自动修复保持“人工 review + 回归验证”后再入主干。
+
+完整示范见 [docs/ai-testing-workflow.md](docs/ai-testing-workflow.md)，可复制的计划格式见 [docs/test-plan-template.md](docs/test-plan-template.md)。真实项目的测试计划放在根目录 `specs/`，并与 `tests/` 中的实现保持一一对应。
+
 ## 目录结构
 
 ```text
@@ -79,6 +128,8 @@ uv run pytest --wip
 ├── auth/                 # 认证策略层：api_token / ui_login / reuse
 ├── test_data/            # 数据层：yaml 静态数据 + Builder/Director
 ├── utils/                # 日志（双通道+脱敏）/ Allure 辅助
+├── docs/                 # 设计决策、AI 协作流程与测试计划模板
+├── specs/                # 真实项目的 AI planner 测试计划（按需创建）
 ├── artifacts/            # 运行时产物（截图/trace/日志/allure 结果，gitignore）
 └── tests/
     ├── conftest.py       # 根：--env/--wip、默认策略、跨层共享 fixture、失败附件 hook

@@ -29,6 +29,7 @@ EXCLUDE_DIRS = {
     "artifacts",
     ".pytest_cache",
     ".ruff_cache",
+    ".remember",
     "__pycache__",
     ".claude",
     ".idea",

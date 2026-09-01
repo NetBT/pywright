@@ -37,6 +37,7 @@ packages = ["scripts"]
 "config" = "scripts/_templates/config"
 "docs" = "scripts/_templates/docs"
 "pages" = "scripts/_templates/pages"
+"specs" = "scripts/_templates/specs"
 "test_data" = "scripts/_templates/test_data"
 "tests" = "scripts/_templates/tests"
 "utils" = "scripts/_templates/utils"
