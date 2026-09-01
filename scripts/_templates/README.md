@@ -40,4 +40,3 @@ uv run ruff format --check .
 allure generate artifacts/allure-results -o artifacts/allure-report --clean
 allure open artifacts/allure-report
 ```
-
