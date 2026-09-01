@@ -53,7 +53,9 @@ def collect_template_files() -> list[Path]:
 def render_file(rel: Path, text: str, ctx: dict) -> str:
     """按文件类型替换模板占位：pyproject 项目名 / README 标题 / .env 键值。"""
     if rel.name == "pyproject.toml":
-        text = re.sub(r'^name = "pywright"', f'name = "{ctx["name"]}"', text, flags=re.MULTILINE)
+        text = re.sub(
+            r'^name = "pywright"', f'name = "{ctx["name"]}"', text, flags=re.MULTILINE
+        )
     elif rel.name == "README.md":
         text = re.sub(r"^# pywright$", f"# {ctx['name']}", text, flags=re.MULTILINE)
     elif rel.name == ".env":
@@ -64,13 +66,29 @@ def render_file(rel: Path, text: str, ctx: dict) -> str:
 def render_env_content(text: str, ctx: dict) -> str:
     """注入 URL/认证参数到 .env 配置。"""
     body = re.sub(
-        r"^TEST_APP__UI_BASE_URL=.*$", f"TEST_APP__UI_BASE_URL={ctx['ui_url']}", text, flags=re.MULTILINE
+        r"^TEST_APP__UI_BASE_URL=.*$",
+        f"TEST_APP__UI_BASE_URL={ctx['ui_url']}",
+        text,
+        flags=re.MULTILINE,
     )
     body = re.sub(
-        r"^TEST_APP__API_BASE_URL=.*$", f"TEST_APP__API_BASE_URL={ctx['api_url']}", body, flags=re.MULTILINE
+        r"^TEST_APP__API_BASE_URL=.*$",
+        f"TEST_APP__API_BASE_URL={ctx['api_url']}",
+        body,
+        flags=re.MULTILINE,
     )
-    body = re.sub(r"^TEST_AUTH__MODE=.*$", f"TEST_AUTH__MODE={ctx['auth_mode']}", body, flags=re.MULTILINE)
-    body = re.sub(r"^TEST_AUTH__TOKEN=.*$", f"TEST_AUTH__TOKEN={ctx['token']}", body, flags=re.MULTILINE)
+    body = re.sub(
+        r"^TEST_AUTH__MODE=.*$",
+        f"TEST_AUTH__MODE={ctx['auth_mode']}",
+        body,
+        flags=re.MULTILINE,
+    )
+    body = re.sub(
+        r"^TEST_AUTH__TOKEN=.*$",
+        f"TEST_AUTH__TOKEN={ctx['token']}",
+        body,
+        flags=re.MULTILINE,
+    )
     return body
 
 
@@ -124,15 +142,38 @@ def main(argv: list[str] | None = None) -> int:
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
     parser.add_argument("target", help="目标项目目录（不存在则创建）")
-    parser.add_argument("--name", help="项目名（写入 pyproject.toml；默认取目标目录名）")
-    parser.add_argument("--ui-url", default="https://demo.playwright.dev/todomvc", help="UI 占位地址（写入 .env）")
-    parser.add_argument("--api-url", default="https://httpbin.org", help="API 占位地址（写入 .env）")
-    parser.add_argument("--auth-mode", default="api_token", choices=["api_token", "ui_login", "reuse"], help="认证模式")
-    parser.add_argument("--token", default="placeholder-token", help="占位 token（真实值用环境变量 TEST_*__* 覆盖）")
+    parser.add_argument(
+        "--name", help="项目名（写入 pyproject.toml；默认取目标目录名）"
+    )
+    parser.add_argument(
+        "--ui-url",
+        default="https://demo.playwright.dev/todomvc",
+        help="UI 占位地址（写入 .env）",
+    )
+    parser.add_argument(
+        "--api-url", default="https://httpbin.org", help="API 占位地址（写入 .env）"
+    )
+    parser.add_argument(
+        "--auth-mode",
+        default="api_token",
+        choices=["api_token", "ui_login", "reuse"],
+        help="认证模式",
+    )
+    parser.add_argument(
+        "--token",
+        default="placeholder-token",
+        help="占位 token（真实值用环境变量 TEST_*__* 覆盖）",
+    )
     parser.add_argument("--git", action="store_true", help="生成后 git init")
-    parser.add_argument("--install", action="store_true", help="生成后 uv sync + 安装 chromium")
-    parser.add_argument("--force", action="store_true", help="目标目录非空时仍继续（不删除现有文件）")
-    parser.add_argument("--dry-run", action="store_true", help="只打印将生成的文件清单，不写盘")
+    parser.add_argument(
+        "--install", action="store_true", help="生成后 uv sync + 安装 chromium"
+    )
+    parser.add_argument(
+        "--force", action="store_true", help="目标目录非空时仍继续（不删除现有文件）"
+    )
+    parser.add_argument(
+        "--dry-run", action="store_true", help="只打印将生成的文件清单，不写盘"
+    )
     args = parser.parse_args(argv)
 
     target = Path(args.target).resolve()
@@ -140,7 +181,12 @@ def main(argv: list[str] | None = None) -> int:
     if not NAME_PATTERN.fullmatch(name):
         sys.exit(f"非法项目名（需符合 Python 包名规范 [A-Za-z0-9._-]）: {name}")
 
-    if target.exists() and any(target.iterdir()) and not args.force and not args.dry_run:
+    if (
+        target.exists()
+        and any(target.iterdir())
+        and not args.force
+        and not args.dry_run
+    ):
         sys.exit(f"目标目录非空: {target}（如需继续请加 --force，现有文件不会被删除）")
 
     print(f"初始化测试框架到: {target}")
